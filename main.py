@@ -36,7 +36,7 @@ def run_bot(token, database) -> None:
     """Start the bot."""
     # Create the Updater and pass it your bot's token.
     updater = Updater(token)
-    updater.job_queue.run_repeating(update, interval=60)
+    updater.job_queue.run_repeating(update, interval=10)
 
     # Get the dispatcher to register handlers
     dispatcher = updater.dispatcher
