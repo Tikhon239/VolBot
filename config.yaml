@@ -1,0 +1,14 @@
+POSTGRES:
+  USER: !ENV ${PG_USER}
+  PASSWORD: !ENV ${PG_PASSWORD}
+  HOST: ec2-52-208-221-89.eu-west-1.compute.amazonaws.com
+  PORT: 5432
+  DATABASE: d77pd2039kr87n
+  file_name: src/database/database_structure.sql
+TG:
+  TOKEN: !ENV ${TGTOKEN}
+VK:
+  TOKEN: !ENV ${VKTOKEN}
+  METHOD: board.getTopics
+  PARAMS: group_id=64612773
+  VERSION: 5.131
