@@ -3,7 +3,8 @@ DROP TABLE IF EXISTS Subscribers;
 
 CREATE TABLE Topics(
 Id SERIAL PRIMARY KEY,
-Description TEXT NOT NULL
+Description TEXT NOT NULL,
+Created TIMESTAMP NOT NULL
  );
 
 CREATE TABLE Subscribers(

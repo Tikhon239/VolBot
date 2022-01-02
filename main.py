@@ -9,12 +9,18 @@ from src.database.database import DataBase
 
 def subscribe(update: Update, context: CallbackContext, database: DataBase) -> None:
     chat_id = update.message.chat_id
-    update.message.reply_text(database.add_subscriber(chat_id))
+    if database.add_subscriber(chat_id):
+        update.message.reply_text('Вы подписались на обновления')
+    else:
+        update.message.reply_text('Вы уже подписаны на обновления')
 
 
 def unsubscribe(update: Update, context: CallbackContext, database: DataBase) -> None:
     chat_id = update.message.chat_id
-    update.message.reply_text(database.del_subscriber(chat_id))
+    if database.del_subscriber(chat_id):
+        update.message.reply_text('Вы отписались от обновлений')
+    else:
+        update.message.reply_text('Вы уже отписаны от обновлений')
 
 
 def echo(update: Update, context: CallbackContext) -> None:
@@ -22,14 +28,17 @@ def echo(update: Update, context: CallbackContext) -> None:
 
 
 def get_board(update: Update, context: CallbackContext, database: DataBase) -> None:
-    update.message.reply_text(database.get_descriptions())
+    board = database.get_topics()
+    description = database.topics_to_description(board)
+    update.message.reply_text(description)
 
 
 def update(context: CallbackContext):
     new_topics = database.update()
     if new_topics:
-        for chat_id in database.get_subscribers():
-            context.bot.send_message(chat_id=chat_id, text=new_topics)
+        description = database.topics_to_description(new_topics)
+        for subscriber in database.get_subscribers():
+            context.bot.send_message(chat_id=subscriber['id'], text=description)
 
 
 def run_bot(token, database) -> None:
@@ -80,5 +89,5 @@ if __name__ == "__main__":
     URL = f"https://api.vk.com/method/{VK['METHOD']}?{VK['PARAMS']}&access_token={VK['TOKEN']}&v={VK['VERSION']}"
     PG_CONFIG = config['POSTGRES']
 
-    database = DataBase(PG_CONFIG, URL)
+    database = DataBase(PG_CONFIG, URL, False)
     run_bot(TOKEN, database)

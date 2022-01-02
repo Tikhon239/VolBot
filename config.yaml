@@ -6,9 +6,9 @@ POSTGRES:
   DATABASE: d77pd2039kr87n
   file_name: src/database/database_structure.sql
 TG:
-  TOKEN: !ENV ${TGTOKEN}
+  TOKEN: !ENV ${TG_TOKEN}
 VK:
-  TOKEN: !ENV ${VKTOKEN}
+  TOKEN: !ENV ${VK_TOKEN}
   METHOD: board.getTopics
-  PARAMS: group_id=64612773
+  PARAMS: !ENV ${VK_PARAMS}
   VERSION: 5.131

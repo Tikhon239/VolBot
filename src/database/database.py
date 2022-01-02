@@ -1,80 +1,124 @@
-import os
+from datetime import datetime
 import requests
 from peewee import *
 from src.database.connection import create_connection_factory
 
 
 class DataBase:
-    def __init__(self, config, url):
+    def __init__(self, config, url, recreate_database: bool = False):
         self.connection_factory = create_connection_factory(config)
         self.url = url
+        self.topic_ids = set()
 
-        if os.path.isfile(config['file_name']):
-            self.create_new_database(config['file_name'])
-            self.update()
+        if recreate_database:
+            self.recreate_database(config['file_name'])
+        else:
+            self.topic_ids = set(topic['id'] for topic in self.get_topics())
 
-    def create_new_database(self, file_name):
+    def recreate_database(self, file_name):
         with self.connection_factory.conn() as db:
-            cur = db.cursor()
-            file = open(file_name)
-            cur.execute(file.read())
-            file.close()
-            db.commit()
+            with open(file_name, 'r') as file:
+                db.execute_sql(file.read())
 
-    def add_subscriber(self, subscriber_id: int) -> str:
+            topics = Table('topics').bind(db)
+            vk_request = requests.get(self.url).json()
+            for item in vk_request['response']['items']:
+                topic = {
+                    'id': item['id'],
+                    'description': item['title'],
+                    'created': datetime.fromtimestamp(item['created']).strftime('%Y-%m-%d %H:%M:%S')
+                }
+
+                topics.insert(**topic).execute()
+                self.topic_ids.add(topic['id'])
+
+    def add_subscriber(self, id: int) -> bool:
         with self.connection_factory.conn() as db:
             subscribers = Table('subscribers').bind(db)
-            q = subscribers.select(subscribers.c.id)\
-                .where(subscribers.c.id == subscriber_id)
+            q = subscribers.select(subscribers.c.id) \
+                .where(subscribers.c.id == id)
 
             if q.exists() == 0:
-                subscribers.insert(id=subscriber_id).execute()
-                message = 'Вы подписались на обновления'
-            else:
-                message = 'Вы уже подписаны на обновления'
-            return message
+                subscribers.insert(id=id).execute()
+                return True
+            return False
 
-    def del_subscriber(self, subscriber_id: int) -> str:
+    def del_subscriber(self, id: int) -> bool:
         with self.connection_factory.conn() as db:
             subscribers = Table('subscribers').bind(db)
-            q = subscribers.select(subscribers.c.id)\
-                .where(subscribers.c.id == subscriber_id)
+            q = subscribers.select(subscribers.c.id) \
+                .where(subscribers.c.id == id)
 
             if q.exists() > 0:
-                subscribers.delete().where(id=subscriber_id).execute()
-                message = 'Вы отписались от обновлений'
-            else:
-                message = 'Вы уже отписаны от обновлений'
-            return message
+                subscribers.delete() \
+                    .where(subscribers.c.id == id) \
+                    .execute()
+                return True
+            return False
 
     def get_subscribers(self):
         with self.connection_factory.conn() as db:
             subscribers = Table('subscribers').bind(db)
-            q = subscribers.select(subscribers.c.id).execute()
-            return [subscriber['id'] for subscriber in list(q)]
+            q = subscribers.select(subscribers.c.id)
+            return list(q)
+
+    def add_topic(self, id: int, description: str, created) -> bool:
+        with self.connection_factory.conn() as db:
+            topics = Table('topics').bind(db)
+            q = topics.select(topics.c.id) \
+                .where(topics.c.id == id)
+            if q.exists() == 0:
+                topics.insert(id=id, description=description, created=created).execute()
+                return True
+            return False
+
+    def del_topic(self, id: int) -> bool:
+        with self.connection_factory.conn() as db:
+            topics = Table('topics').bind(db)
+            q = topics.select(topics.c.id) \
+                .where(topics.c.id == id)
+            if q.exists() > 0:
+                topics.delete() \
+                    .where(topics.c.id == id) \
+                    .execute()
+                return True
+            return False
+
+    def get_topics(self):
+        with self.connection_factory.conn() as db:
+            topics = Table('topics').bind(db)
+            q = topics.select(topics.c.id, topics.c.description, topics.c.created) \
+                .order_by(topics.c.created.desc())
+            return list(q)
 
     def update(self):
-        with self.connection_factory.conn() as db:
-            topics = Table('topics').bind(db)
-            board = requests.get(self.url).json()
-            board = [{'id': item['id'], 'description': item['title']} for item in board['response']['items']]
 
-            new_topics = []
-            for item in board:
-                q = topics.select(topics.c.id) \
-                    .where(topics.c.id == item['id'])
-                if q.exists() == 0:
-                    new_topics.append(item['description'])
-            new_topics = '\n'.join(new_topics)
+        vk_request = requests.get(self.url).json()
+        new_board = {}
+        for item in vk_request['response']['items']:
+            new_board[item['id']] = {
+                'id': item['id'],
+                'description': item['title'],
+                'created': datetime.fromtimestamp(item['created']).strftime('%Y-%m-%d %H:%M:%S')
+            }
+        new_topics_id = set(new_board.keys())
 
-            if new_topics:
-                topics.delete().execute()
-                for item in board:
-                    topics.insert(id=item['id'], description=item['description']).execute()
-            return new_topics
+        add_topics_id = new_topics_id - self.topic_ids
+        del_topics_id = self.topic_ids - new_topics_id
 
-    def get_descriptions(self):
-        with self.connection_factory.conn() as db:
-            topics = Table('topics').bind(db)
-            q = topics.select(topics.c.description).execute()
-            return '\n'.join([topic['description'] for topic in list(q)])
+        new_topics = []
+        for topic_id in add_topics_id:
+            new_topic = new_board[topic_id]
+            self.add_topic(**new_topic)
+            new_topics.append(new_topic)
+
+        for topic_id in del_topics_id:
+            self.del_topic(topic_id)
+
+        self.topic_ids = new_topics_id
+
+        return new_topics
+
+    @staticmethod
+    def topics_to_description(topics):
+        return '\n'.join([topic['description'] for topic in topics])
