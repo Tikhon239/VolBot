@@ -10,5 +10,5 @@ TG:
 VK:
   TOKEN: !ENV ${VK_TOKEN}
   METHOD: board.getTopics
-  PARAMS: !ENV ${VK_PARAMS}
+  GROUP_ID: !ENV ${GROUP_ID}
   VERSION: 5.131

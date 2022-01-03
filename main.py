@@ -30,7 +30,7 @@ def echo(update: Update, context: CallbackContext) -> None:
 def get_board(update: Update, context: CallbackContext, database: DataBase) -> None:
     board = database.get_topics()
     description = database.topics_to_description(board)
-    update.message.reply_text(description)
+    update.message.reply_text(text=description, parse_mode='markdown', disable_web_page_preview=True)
 
 
 def update(context: CallbackContext):
@@ -38,7 +38,9 @@ def update(context: CallbackContext):
     if new_topics:
         description = database.topics_to_description(new_topics)
         for subscriber in database.get_subscribers():
-            context.bot.send_message(chat_id=subscriber['id'], text=description)
+            context.bot.send_message(
+                chat_id=subscriber['id'], text=description, parse_mode='markdown', disable_web_page_preview=True
+            )
 
 
 def run_bot(token, database) -> None:
@@ -84,10 +86,11 @@ def run_bot(token, database) -> None:
 
 if __name__ == "__main__":
     config = read_yaml('config.yaml')
-    TOKEN = config['TG']['TOKEN']
-    VK = config['VK']
-    URL = f"https://api.vk.com/method/{VK['METHOD']}?{VK['PARAMS']}&access_token={VK['TOKEN']}&v={VK['VERSION']}"
-    PG_CONFIG = config['POSTGRES']
 
-    database = DataBase(PG_CONFIG, URL, False)
+    TOKEN = config['TG']['TOKEN']
+
+    VK_CONFIG = config['VK']
+    PG_CONFIG = config['POSTGRES']
+    database = DataBase(PG_CONFIG, VK_CONFIG, False)
+
     run_bot(TOKEN, database)

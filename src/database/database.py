@@ -5,15 +5,21 @@ from src.database.connection import create_connection_factory
 
 
 class DataBase:
-    def __init__(self, config, url, recreate_database: bool = False):
-        self.connection_factory = create_connection_factory(config)
-        self.url = url
+    def __init__(self, pg_config, vk_config, recreate_database: bool = False):
+        self.pg_config = pg_config
+        self.vk_config = vk_config
+
+        self.connection_factory = create_connection_factory(pg_config)
         self.topic_ids = set()
 
         if recreate_database:
-            self.recreate_database(config['file_name'])
+            self.recreate_database(pg_config['file_name'])
         else:
             self.topic_ids = set(topic['id'] for topic in self.get_topics())
+
+    @property
+    def url(self):
+        return f"https://api.vk.com/method/{self.vk_config['METHOD']}?group_id={self.vk_config['GROUP_ID']}&access_token={self.vk_config['TOKEN']}&v={self.vk_config['VERSION']}"
 
     def recreate_database(self, file_name):
         with self.connection_factory.conn() as db:
@@ -119,6 +125,7 @@ class DataBase:
 
         return new_topics
 
-    @staticmethod
-    def topics_to_description(topics):
-        return '\n'.join([topic['description'] for topic in topics])
+    def topics_to_description(self, topics):
+        return '\n'.join([
+            f"[{topic['description']}](https://vk.com/topic-{self.vk_config['GROUP_ID']}_{topic['id']})" for topic in topics
+        ])
