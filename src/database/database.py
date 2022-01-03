@@ -127,5 +127,5 @@ class DataBase:
 
     def topics_to_description(self, topics):
         return '\n'.join([
-            f"[{topic['description']}](https://vk.com/topic-{self.vk_config['GROUP_ID']}_{topic['id']})" for topic in topics
+            f"{topic['description']} [жамк](https://vk.com/topic-{self.vk_config['GROUP_ID']}_{topic['id']})" for topic in topics
         ])
