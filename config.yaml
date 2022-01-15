@@ -1,9 +1,9 @@
 POSTGRES:
   USER: !ENV ${PG_USER}
   PASSWORD: !ENV ${PG_PASSWORD}
-  HOST: ec2-52-208-221-89.eu-west-1.compute.amazonaws.com
+  HOST: ec2-54-247-96-153.eu-west-1.compute.amazonaws.com
   PORT: 5432
-  DATABASE: d77pd2039kr87n
+  DATABASE: d4h4ekoeg3ddnl
   file_name: src/database/database_structure.sql
 TG:
   TOKEN: !ENV ${TG_TOKEN}
